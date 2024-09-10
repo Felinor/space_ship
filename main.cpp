@@ -3,6 +3,7 @@
 #include <functional>
 #include "spaceship.h"
 #include "movement.h"
+#include "exception_queue.h"
 
 // Проверяем результат теста
 void assertEquals(const Vector& a, const Vector& b, const std::string& testName) {
@@ -94,11 +95,82 @@ void testMoveThrowsOnSetPositionError() {
     assertThrows([&]() { Movement::Move(ship); }, "MoveThrowsOnSetPositionError");
 }
 
+// Тесты
+
+void testLogCommandLogsException() {
+    CommandQueue queue;
+    std::cout << "\nTest 4: LogCommand logs exception\n";
+    try {
+        auto failingCommand = std::make_shared<FailingCommand>();
+        throw std::runtime_error("Test exception");
+    } catch (const std::exception& ex) {
+        auto cmd = std::make_shared<FailingCommand>();
+        auto logCmd = std::make_shared<LogCommand>(cmd, ex);
+        queue.AddCommand(logCmd);
+    }
+    queue.ProcessCommands();  // Ожидаем вывод логирования исключения
+}
+
+void testHandleExceptionAddsLogCommandToQueue() {
+    CommandQueue queue;
+    std::cout << "\nTest 5: HandleException adds LogCommand to queue\n";
+    auto failingCommand5 = std::make_shared<FailingCommand>();
+    try {
+        failingCommand5->Execute();
+    } catch (const std::exception& ex) {
+        queue.HandleException(failingCommand5, ex);
+    }
+    queue.ProcessCommands();  // Ожидаем добавления LogCommand
+}
+
+void testRetryCommandRetriesExecution() {
+    CommandQueue queue;
+    std::cout << "\nTest 6: RetryCommand retries execution\n";
+    auto retryCmd = std::make_shared<RetryCommand>(std::make_shared<FailingCommand>(), 2);
+    queue.AddCommand(retryCmd);
+    queue.ProcessCommands();  // Ожидаем повтор выполнения команды
+}
+
+void testHandleExceptionAddsRetryCommandToQueue() {
+    CommandQueue queue;
+    std::cout << "\nTest 7: HandleException adds RetryCommand to queue\n";
+    auto failingCommand7 = std::make_shared<FailingCommand>();
+    try {
+        failingCommand7->Execute();
+    } catch (const std::exception& ex) {
+        queue.HandleException(failingCommand7, ex);
+    }
+    queue.ProcessCommands();  // Ожидаем добавления RetryCommand
+}
+
+void testRetryThenLogOnException() {
+    CommandQueue queue;
+    std::cout << "\nTest 8: Retry then Log on exception\n";
+    auto failingCommand8 = std::make_shared<FailingCommand>();
+    queue.AddCommand(failingCommand8);
+    queue.ProcessCommands();  // Ожидаем повтор и логирование после второго исключения
+}
+
+void testRetryTwiceThenLogOnException() {
+    CommandQueue queue;
+    std::cout << "\nTest 9: Retry twice, then log on exception\n";
+    auto retryTwiceCmd = std::make_shared<RetryTwiceCommand>(std::make_shared<FailingCommand>());
+    queue.AddCommand(retryTwiceCmd);
+    queue.ProcessCommands();  // Ожидаем два повтора и логирование ошибки после третьего исключения
+}
+
 int main() {
     testMoveChangesPositionCorrectly();
     testMoveThrowsOnPositionReadError();
     testMoveThrowsOnVelocityReadError();
     testMoveThrowsOnSetPositionError();
+
+    testLogCommandLogsException();           // Test 4
+    testHandleExceptionAddsLogCommandToQueue(); // Test 5
+    testRetryCommandRetriesExecution();      // Test 6
+    testHandleExceptionAddsRetryCommandToQueue(); // Test 7
+    testRetryThenLogOnException();           // Test 8
+    testRetryTwiceThenLogOnException();      // Test 9
 
     return 0;
 }
