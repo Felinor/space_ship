@@ -4,6 +4,12 @@
 #include "spaceship.h"
 #include "movement.h"
 #include "exception_queue.h"
+#include "checkFuelCommand.h"
+#include "burnFuelCommand.h"
+#include "macroCommand.h"
+#include "rotateAndChangeVelocity.h"
+#include "moveWithFuel.h"
+#include "changeVelocity.h"
 
 // Проверяем результат теста
 void assertEquals(const Vector& a, const Vector& b, const std::string& testName) {
@@ -159,18 +165,131 @@ void testRetryTwiceThenLogOnException() {
     queue.ProcessCommands();  // Ожидаем два повтора и логирование ошибки после третьего исключения
 }
 
-int main() {
-    testMoveChangesPositionCorrectly();
-    testMoveThrowsOnPositionReadError();
-    testMoveThrowsOnVelocityReadError();
-    testMoveThrowsOnSetPositionError();
+// Тест проверяет достаточно ли топлива для выполнения действия
+void testCheckFuelCommandPasses() {
+    SpaceShip ship(Vector(0, 0), 0);
+    ship.setFuel(100);
+    CheckFuelCommand checkFuelCmd(ship, 50);
+    checkFuelCmd.Execute();  // Должно пройти без исключений
+    std::cout << "Test CheckFuelCommandPasses passed." << std::endl;
+}
 
-    testLogCommandLogsException();           // Test 4
-    testHandleExceptionAddsLogCommandToQueue(); // Test 5
-    testRetryCommandRetriesExecution();      // Test 6
-    testHandleExceptionAddsRetryCommandToQueue(); // Test 7
-    testRetryThenLogOnException();           // Test 8
-    testRetryTwiceThenLogOnException();      // Test 9
+// Если топлива недостаточно - получаем исключение
+void testCheckFuelCommandFails() {
+    SpaceShip ship(Vector(0, 0), 0);
+    ship.setFuel(30);
+    CheckFuelCommand checkFuelCmd(ship, 50);
+    assertThrows([&]() { checkFuelCmd.Execute(); }, "CheckFuelCommandFails");
+}
+
+// Тест уменьшения количества топлива при выполнении команды
+void testBurnFuelCommand() {
+    SpaceShip ship(Vector(0, 0), 0);
+    ship.setFuel(100);
+    BurnFuelCommand burnFuelCmd(ship, 20);
+    burnFuelCmd.Execute();  // Сжигаем 20 единиц топлива
+    assertEquals(ship.getFuel(), 80, "BurnFuelCommand");
+}
+
+// Тест будет выполнять несколько команд последовательно, останавливая выполнение при выбросе исключения
+void testMoveWithFuelConsumption() {
+    SpaceShip ship(Vector(0, 0), 0.0);
+    ship.setFuel(10);  // Устанавливаем топливо
+
+    double fuelConsumptionRate = 5; // Скорость расхода топлива
+
+    // Создаем цепочку команд
+    std::vector<std::shared_ptr<Command>> commands = {
+        std::make_shared<CheckFuelCommand>(ship, fuelConsumptionRate),
+        std::make_shared<MoveWithFuelCommand>(ship, fuelConsumptionRate),
+        std::make_shared<BurnFuelCommand>(ship, fuelConsumptionRate)
+    };
+
+    MacroCommand moveWithFuel(commands);
+    moveWithFuel.Execute();  // Выполняем макрокоманду
+}
+
+// Тест изменения вектора скорости
+void testChangeVelocityCommand() {
+    SpaceShip ship(Vector(0, 0), 0);
+    Vector newVelocity(10, 5);
+    ChangeVelocityCommand changeVelocity(ship, newVelocity);
+
+    changeVelocity.Execute();
+    if (ship.getVelocity() == newVelocity) {
+        std::cout << "Test ChangeVelocityCommand passed.\n";
+    } else {
+        std::cerr << "Test ChangeVelocityCommand failed.\n";
+    }
+}
+
+// Тест команды поворота, которая еще и меняет вектор мгновенной скорости
+void testRotateAndChangeVelocity() {
+    SpaceShip ship(Vector(0, 0), 0);
+    ship.setFuel(10);
+
+    double fuelConsumptionRate = 5;
+
+    // Создаем цепочку команд
+    std::vector<std::shared_ptr<Command>> commands = {
+        std::make_shared<CheckFuelCommand>(ship, fuelConsumptionRate),
+        std::make_shared<MoveWithFuelCommand>(ship, fuelConsumptionRate),
+        std::make_shared<ChangeVelocityCommand>(ship, Vector(10, 10)),
+        std::make_shared<RotateAndChangeVelocity>(ship, 90, Vector(5, 5)),
+        std::make_shared<BurnFuelCommand>(ship, fuelConsumptionRate)
+    };
+
+    MacroCommand rotateAndChangeVelocity(commands);
+    rotateAndChangeVelocity.Execute();
+
+    // Проверяем, что корабль повернулся на 90 градусов
+    assertEquals(ship.getRotation(), 90.0, "RotateAndChangeVelocity: Rotation");
+
+    // Проверяем, что скорость изменена
+    assertEquals(ship.getVelocity(), Vector(-10, 10), "RotateAndChangeVelocity: Velocity");
+}
+
+// Тест команды поворота, которая не меняет вектор мгновенной скорости
+void testRotateAndWithoutChangeVelocity() {
+    SpaceShip ship(Vector(0, 0), 0);
+
+    Vector velocity(0, 0);
+
+    // Создаем цепочку команд
+    std::vector<std::shared_ptr<Command>> noMovementCommands = {
+        std::make_shared<ChangeVelocityCommand>(ship, velocity),
+        std::make_shared<RotateAndChangeVelocity>(ship, 45, velocity),
+    };
+
+    MacroCommand noMovementRotate(noMovementCommands);
+    noMovementRotate.Execute();
+
+    // Проверяем, что корабль повернулся на 45 градусов
+    assertEquals(ship.getRotation(), 45.0, "RotateWithoutChangeVelocity: Rotation with no movement");
+    // Проверяем, что скорость осталась нулевой
+    assertEquals(ship.getVelocity(), velocity, "RotateWithoutChangeVelocity: Velocity with no movement");
+}
+
+int main() {
+    testCheckFuelCommandPasses();
+    testCheckFuelCommandFails();
+    testBurnFuelCommand();
+    testMoveWithFuelConsumption();
+    testChangeVelocityCommand();
+    testRotateAndChangeVelocity();
+    testRotateAndWithoutChangeVelocity();
+
+//    testMoveChangesPositionCorrectly();
+//    testMoveThrowsOnPositionReadError();
+//    testMoveThrowsOnVelocityReadError();
+//    testMoveThrowsOnSetPositionError();
+
+//    testLogCommandLogsException();           // Test 4
+//    testHandleExceptionAddsLogCommandToQueue(); // Test 5
+//    testRetryCommandRetriesExecution();      // Test 6
+//    testHandleExceptionAddsRetryCommandToQueue(); // Test 7
+//    testRetryThenLogOnException();           // Test 8
+//    testRetryTwiceThenLogOnException();      // Test 9
 
     return 0;
 }

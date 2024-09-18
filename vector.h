@@ -16,6 +16,10 @@ public:
         return X == vec.X && Y == vec.Y;
     }
 
+    bool operator!=(const Vector& other) const {
+        return X != other.X || Y != other.Y;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Vector& vec) {
         os << "Vec(" << vec.X << ", " << vec.Y << ")";
         return os;
