@@ -6,6 +6,7 @@ private:
     Vector position;
     Vector velocity;
     Rotation rotation;
+    double fuel;
 
 public:
     SpaceShip(const Vector& pos, Rotation rot)
@@ -13,6 +14,23 @@ public:
 
     void setVelocity(const Vector& vec) {
         velocity = vec;
+    }
+
+    // Добавляем методы для управления топливом
+    double getFuel() const {
+        return fuel;
+    }
+
+    void setFuel(double amount) {
+        fuel = amount;
+    }
+
+    void burnFuel(double amount) {
+        if (fuel >= amount) {
+            fuel -= amount;
+        } else {
+            throw std::runtime_error("Not enough fuel to burn.");
+        }
     }
 
     // Implement Movable interface

@@ -17,7 +17,13 @@ add_executable(spaceship main.cpp
                          movement.h
                          rotation.h
                          spaceship.h
-                         vector.h)
+                         vector.h
+                         checkFuelCommand.h
+                         burnFuelCommand.h
+                         macroCommand.h
+                         moveWithFuel.h
+                         changeVelocity.h
+                         rotateAndChangeVelocity.h)
 
 # Подключение Google Test
 include(FetchContent)

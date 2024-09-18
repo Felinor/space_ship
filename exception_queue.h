@@ -1,6 +1,4 @@
-#ifndef EXCEPTION_QUEUE_H
-#define EXCEPTION_QUEUE_H
-
+#pragma once
 #include <iostream>
 #include <queue>
 #include <stdexcept>
@@ -159,5 +157,3 @@ public:
         return "RetryTwiceCommand";
     }
 };
-
-#endif // EXCEPTION_QUEUE_H
