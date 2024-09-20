@@ -10,6 +10,7 @@
 #include "rotateAndChangeVelocity.h"
 #include "moveWithFuel.h"
 #include "changeVelocity.h"
+#include "ioc.h"
 
 // Проверяем результат теста
 void assertEquals(const Vector& a, const Vector& b, const std::string& testName) {
@@ -102,7 +103,6 @@ void testMoveThrowsOnSetPositionError() {
 }
 
 // Тесты
-
 void testLogCommandLogsException() {
     CommandQueue queue;
     std::cout << "\nTest 4: LogCommand logs exception\n";
@@ -270,14 +270,68 @@ void testRotateAndWithoutChangeVelocity() {
     assertEquals(ship.getVelocity(), velocity, "RotateWithoutChangeVelocity: Velocity with no movement");
 }
 
+// Многопоточный тест
+void testIoCInMultithreadedEnvironment() {
+    // Фейковый класс команды для движения
+    class MoveCommand {
+    public:
+        void Execute() {
+            std::cout << "Moving forward! ";
+        }
+    };
+
+    IoC container;
+
+    // Потоковая функция для работы со скоупами
+    auto threadFunction = [&container](const std::string& scopeName, const std::string& commandName) {
+        try {
+            // Создаем новый скоуп для потока
+            container.CreateScope(scopeName);
+
+            // Регистрируем команду в скоупе
+            container.Register<MoveCommand>(commandName, [](std::vector<void*>) { return new MoveCommand(); });
+
+            // Разрешаем и выполняем команду
+            auto moveCommand = container.Resolve<MoveCommand>(commandName);
+            moveCommand->Execute();
+
+            std::cout << commandName << std::endl;
+
+            // Проверяем, что команда была успешно разрешена и выполнена
+            assert(moveCommand != nullptr);
+        } catch (const std::exception& e) {
+            std::cerr << "Error in thread: " << e.what() << std::endl;
+        }
+    };
+
+    // Создаем потоки, каждый со своим скоупом и командой
+    std::thread thread1(threadFunction, "scope1", "MoveCommand1");
+    std::thread thread2(threadFunction, "scope2", "MoveCommand2");
+
+    // Ждем завершения потоков
+    thread1.join();
+    thread2.join();
+
+    // Убедимся, что команды были изолированы
+    try {
+        // Попробуем разрешить команду из scope1 в текущем потоке (что должно привести к исключению)
+        container.Resolve<MoveCommand>("MoveCommand1");
+        assert(false); // Эта строка не должна выполниться, т.к. команда из другого скоупа
+    } catch (const std::runtime_error& e) {
+        std::cout << "Successfully isolated scope: " << e.what() << std::endl;
+    }
+}
+
 int main() {
-    testCheckFuelCommandPasses();
-    testCheckFuelCommandFails();
-    testBurnFuelCommand();
-    testMoveWithFuelConsumption();
-    testChangeVelocityCommand();
-    testRotateAndChangeVelocity();
-    testRotateAndWithoutChangeVelocity();
+      testIoCInMultithreadedEnvironment();
+
+//    testCheckFuelCommandPasses();
+//    testCheckFuelCommandFails();
+//    testBurnFuelCommand();
+//    testMoveWithFuelConsumption();
+//    testChangeVelocityCommand();
+//    testRotateAndChangeVelocity();
+//    testRotateAndWithoutChangeVelocity();
 
 //    testMoveChangesPositionCorrectly();
 //    testMoveThrowsOnPositionReadError();

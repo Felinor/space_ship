@@ -23,7 +23,8 @@ add_executable(spaceship main.cpp
                          macroCommand.h
                          moveWithFuel.h
                          changeVelocity.h
-                         rotateAndChangeVelocity.h)
+                         rotateAndChangeVelocity.h
+                         ioc.h)
 
 # Подключение Google Test
 include(FetchContent)
