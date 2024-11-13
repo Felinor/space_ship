@@ -10,8 +10,6 @@ public:
 };
 
 // Rotatable
-#pragma once
-
 using Rotation = double;
 
 class Rotatable {
