@@ -19,7 +19,7 @@ jobs:
 
     # Установка компилятора и зависимостей
     - name: Install dependencies
-      run: sudo apt-get install -y build-essential cmake qtbase5-dev libqt5websockets5-dev
+      run: sudo apt-get update && sudo apt-get install -y build-essential cmake
 
     # Конфигурация CMake
     - name: Configure CMake
