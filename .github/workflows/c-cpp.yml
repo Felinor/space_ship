@@ -19,7 +19,7 @@ jobs:
 
     # Установка компилятора и зависимостей
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt install qtbase5-dev cmake qttools5-dev qttools5-dev-tools qtwebengine5-dev libqt5svg5-dev libqt5websockets5-dev
+      run: sudo apt install qtbase5-dev cmake qttools5-dev qttools5-dev-tools qtwebengine5-dev libqt5svg5-dev libqt5websockets5-dev
 
     # Конфигурация CMake
     - name: Configure CMake
